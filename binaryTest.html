@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Binary Tree Visualization</title>
+  <style>
+/* General Styles */
+body {
+  font-family: 'Arial', sans-serif;
+  background-color: #e9ecef;
+  color: #343a40;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100vh;
+}
+
+h1 {
+  margin-top: 20px;
+  color: #495057;
+  font-size: 28px;
+  text-align: center;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Controls Styles */
+#controls {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin: 20px 0;
+  gap: 15px;
+  padding: 10px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+#controls input, #controls button {
+  padding: 12px 15px;
+  font-size: 16px;
+  border: 2px solid #007bff;
+  border-radius: 5px;
+  outline: none;
+  transition: border-color 0.3s ease, transform 0.3s ease;
+}
+
+#controls button {
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0, 123, 255, 0.3);
+}
+
+#controls button:hover {
+  background-color: #0056b3;
+  transform: translateY(-2px);
+}
+
+#controls input:focus, #controls button:focus {
+  border-color: #0056b3;
+}
+
+/* Tree Styles */
+.tree {
+  width: 100%;
+  height: 600px;
+  position: relative;
+  background-color: #ffffff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+/* Node Styles */
+.node {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #f1f1f1, #ffffff);
+  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.15);
+  text-align: center;
+  line-height: 60px;
+  font-weight: bold;
+  color: #333;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.node.adding {
+  animation: scaleUp 0.5s ease-out;
+}
+
+.node.visiting {
+  animation: pulse 0.5s ease-in-out infinite;
+}
+
+.node.found {
+  background: linear-gradient(145deg, #28a745, #218838);
+  box-shadow: 0 0 15px rgba(40, 167, 69, 0.5);
+  color: white;
+}
+
+.node.removed {
+  animation: shrinkFadeOut 0.5s forwards;
+}
+
+/* Animation Keyframes */
+@keyframes scaleUp {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    background-color: #f9d5d3;
+  }
+  50% {
+    transform: scale(1.2);
+    background-color: #f8b6b3;
+  }
+}
+
+@keyframes shrinkFadeOut {
+  to {
+    transform: scale(0);
+    opacity: 0;
+  }
+}
+
+/* Link Styles */
+.link {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background-color: #aaa;
+  transform-origin: top left;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  #controls input {
+    width: 150px;
+  }
+
+  .tree {
+    height: 500px;
+  }
+}
+
+  </style>
+</head>
+<body>
+  <h1>Binary Tree Visualization</h1>
+  <div id="controls">
+    <input id="value-input" type="number" placeholder="Enter value to add" />
+    <button id="add-value">Add Value</button>
+    <input id="search-input" type="number" placeholder="Enter value to search" />
+    <button id="search-value">Search Node</button>
+    <input id="delete-input" type="number" placeholder="Enter value to delete" />
+    <button id="delete-value">Delete Node</button>
+  </div>
+  <div class="tree"></div>
+
+  <script>
+    let treeData = null;
+    const treeContainer = document.querySelector('.tree');
+    const nodeSize = 50;
+
+    function createNode(value) {
+      return {
+        value,
+        left: null,
+        right: null,
+      };
+    }
+
+    function addValue(value) {
+      if (!treeData) {
+        treeData = createNode(value);
+      } else {
+        let currentNode = treeData;
+        while (true) {
+          if (value < currentNode.value) {
+            if (!currentNode.left) {
+              currentNode.left = createNode(value);
+              break;
+            }
+            currentNode = currentNode.left;
+          } else {
+            if (!currentNode.right) {
+              currentNode.right = createNode(value);
+              break;
+            }
+            currentNode = currentNode.right;
+          }
+        }
+      }
+      renderTree(value, 'add');
+    }
+
+    function searchValue(value) {
+      const visitedNodes = [];
+      let currentNode = treeData;
+
+      while (currentNode) {
+        visitedNodes.push(currentNode);
+        if (currentNode.value === value) {
+          highlightVisitedNodes(visitedNodes, true);
+          return;
+        }
+        currentNode = value < currentNode.value ? currentNode.left : currentNode.right;
+      }
+
+      highlightVisitedNodes(visitedNodes, false);
+    }
+
+    function highlightVisitedNodes(visitedNodes, found) {
+      visitedNodes.forEach((node, index) => {
+        setTimeout(() => {
+          const nodeElement = document.querySelector(`.node[data-value="${node.value}"]`);
+          if (nodeElement) nodeElement.classList.add('visiting');
+
+          if (index === visitedNodes.length - 1) {
+            setTimeout(() => {
+              if (found) {
+                const lastNode = document.querySelector(`.node[data-value="${node.value}"]`);
+                if (lastNode) lastNode.classList.add('found');
+                alert(`Node with value ${node.value} found!`);
+              } else {
+                alert('Node not found.');
+              }
+            }, 500);
+          }
+        }, index * 500);
+      });
+
+      setTimeout(() => {
+        visitedNodes.forEach((node) => {
+          const nodeElement = document.querySelector(`.node[data-value="${node.value}"]`);
+          if (nodeElement) nodeElement.classList.remove('visiting');
+        });
+      }, visitedNodes.length * 500 + 500);
+    }
+
+    function deleteNode(value) {
+      if (!treeData) return;
+
+      let queue = [treeData];
+      let keyNode = null;
+      let lastNode = null;
+      let parentOfLastNode = null;
+
+      while (queue.length) {
+        let node = queue.shift();
+
+        if (node.value === value) {
+          keyNode = node;
+        }
+
+        if (node.left) {
+          parentOfLastNode = node;
+          queue.push(node.left);
+        }
+        if (node.right) {
+          parentOfLastNode = node;
+          queue.push(node.right);
+        }
+
+        lastNode = node;
+      }
+
+      if (keyNode) {
+        keyNode.value = lastNode.value;
+
+        if (parentOfLastNode?.right === lastNode) {
+          parentOfLastNode.right = null;
+        } else if (parentOfLastNode?.left === lastNode) {
+          parentOfLastNode.left = null;
+        }
+
+        animateDeletion(lastNode.value);
+      }
+
+      renderTree();
+    }
+
+    function animateDeletion(value) {
+      const nodeElement = document.querySelector(`.node[data-value="${value}"]`);
+      if (nodeElement) {
+        nodeElement.classList.add('removed');
+        setTimeout(() => nodeElement.remove(), 500);
+      }
+    }
+
+    function renderTree(newValue = null, action = null) {
+      treeContainer.innerHTML = '';
+
+      if (!treeData) return;
+
+      function traverseTree(node, x, y, depth, isNew) {
+        const nodeElement = document.createElement('div');
+        nodeElement.className = `node ${action === 'add' && isNew ? 'adding' : ''}`;
+        nodeElement.textContent = node.value;
+        nodeElement.setAttribute('data-value', node.value);
+        nodeElement.style.left = `${x}px`;
+        nodeElement.style.top = `${y}px`;
+
+        treeContainer.appendChild(nodeElement);
+
+        const horizontalSpacing = 200 / (depth + 1);
+        const verticalSpacing = 80;
+
+        if (node.left) {
+          const childX = x - horizontalSpacing;
+          const childY = y + verticalSpacing;
+          traverseTree(node.left, childX, childY, depth + 1, node.left.value === newValue);
+          drawLink(x, y, childX, childY);
+        }
+
+        if (node.right) {
+          const childX = x + horizontalSpacing;
+          const childY = y + verticalSpacing;
+          traverseTree(node.right, childX, childY, depth + 1, node.right.value === newValue);
+          drawLink(x, y, childX, childY);
+        }
+      }
+
+      function drawLink(parentX, parentY, childX, childY) {
+        const line = document.createElement('div');
+        line.className = 'link';
+
+        const deltaX = childX - parentX;
+        const deltaY = childY - parentY;
+        const length = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
+
+        line.style.left = `${parentX + nodeSize / 2}px`;
+        line.style.top = `${parentY + nodeSize / 2}px`;
+        line.style.width = `${length}px`;
+        line.style.transform = `rotate(${angle}deg)`;
+
+        treeContainer.appendChild(line);
+      }
+
+      traverseTree(treeData, treeContainer.offsetWidth / 2 - nodeSize / 2, 20, 1, treeData?.value === newValue);
+    }
+
+    document.getElementById('add-value').addEventListener('click', () => {
+      const value = parseInt(document.getElementById('value-input').value);
+      if (!isNaN(value)) {
+        addValue(value);
+        document.getElementById('value-input').value = '';
+      }
+    });
+
+    document.getElementById('search-value').addEventListener('click', () => {
+      const value = parseInt(document.getElementById('search-input').value);
+      if (!isNaN(value)) {
+        searchValue(value);
+        document.getElementById('search-input').value = '';
+      }
+    });
+
+    document.getElementById('delete-value').addEventListener('click', () => {
+      const value = parseInt(document.getElementById('delete-input').value);
+      if (!isNaN(value)) {
+        deleteNode(value);
+        document.getElementById('delete-input').value = '';
+      }
+    });
+
+    renderTree();
+  </script>
+</body>
+</html>
